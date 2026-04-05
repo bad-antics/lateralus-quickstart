@@ -1,0 +1,65 @@
+// models.ltl — Data structures for your project
+
+/// Represents a team member
+pub struct User {
+    name:  string,
+    score: int,
+    role:  string,
+}
+
+impl User {
+    /// Create a new user with validation
+    pub fn new(name: string, score: int, role: string) -> Result<User, string> {
+        if name.is_empty() {
+            return Err("name cannot be empty")
+        }
+        if score < 0 || score > 100 {
+            return Err("score must be 0-100, got ${score}")
+        }
+        Ok(User { name, score, role })
+    }
+
+    /// Check if user meets a score threshold
+    pub fn passes(self, threshold: int) -> bool {
+        self.score >= threshold
+    }
+
+    /// Display string
+    pub fn display(self) -> string {
+        "${self.name} (${self.role}) — ${self.score}"
+    }
+}
+
+/// Represents a project
+pub struct Project {
+    name:    string,
+    owner:   User,
+    tags:    [string],
+    status:  Status,
+}
+
+/// Project status
+pub enum Status {
+    Draft,
+    Active,
+    Paused,
+    Complete,
+}
+
+impl Status {
+    pub fn is_active(self) -> bool {
+        match self {
+            Status::Active => true,
+            _              => false
+        }
+    }
+
+    pub fn label(self) -> string {
+        match self {
+            Status::Draft    => "📝 Draft",
+            Status::Active   => "🟢 Active",
+            Status::Paused   => "⏸️  Paused",
+            Status::Complete => "✅ Complete",
+        }
+    }
+}

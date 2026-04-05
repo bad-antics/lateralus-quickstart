@@ -1,0 +1,46 @@
+// utils.ltl — Reusable utility functions
+
+/// Greet a subject with a formatted message
+pub fn greet(subject: string) -> string {
+    "👋 Hello, ${subject}!"
+}
+
+/// Format a list of items as a numbered string
+pub fn format_list(items: [string]) -> string {
+    items
+        |> enumerate()
+        |> map((i, item) => "${i + 1}. ${item}")
+        |> join("\n")
+}
+
+/// Clamp a value between min and max
+pub fn clamp(value: number, min: number, max: number) -> number {
+    match value {
+        v if v < min => min,
+        v if v > max => max,
+        v            => v
+    }
+}
+
+/// Retry an operation up to `times` attempts
+pub fn retry(times: int, delay_ms: int, operation: fn() -> Result) -> Result {
+    mut attempts = 0
+
+    loop {
+        attempts += 1
+        match operation() {
+            Ok(value) => return Ok(value),
+            Err(e) if attempts >= times => return Err(e),
+            Err(_) => sleep(delay_ms)
+        }
+    }
+}
+
+/// Measure execution time of a block
+pub fn timed(label: string, block: fn() -> T) -> T {
+    let start = time::now()
+    let result = block()
+    let elapsed = time::now() - start
+    print("[${label}] ${elapsed}ms")
+    result
+}

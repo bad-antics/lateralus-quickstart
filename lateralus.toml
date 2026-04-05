@@ -1,0 +1,13 @@
+[project]
+name = "my-lateralus-project"
+version = "0.1.0"
+description = "A new Lateralus project"
+entry = "src/main.ltl"
+
+[dependencies]
+
+[dev-dependencies]
+
+[test]
+dir = "tests"
+pattern = "test_*.ltl"

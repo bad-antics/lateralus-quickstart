@@ -1,0 +1,81 @@
+// test_main.ltl — Tests for the quickstart project
+
+import { greet, format_list, clamp } from "../src/utils"
+import { User, Status } from "../src/models"
+
+// ─── Utils Tests ────────────────────────────────────────────────
+
+test "greet returns formatted string" {
+    assert_eq(greet("World"), "👋 Hello, World!")
+    assert_eq(greet("Lateralus"), "👋 Hello, Lateralus!")
+}
+
+test "format_list numbers items" {
+    let items = ["alpha", "beta", "gamma"]
+    let result = format_list(items)
+    assert_eq(result, "1. alpha\n2. beta\n3. gamma")
+}
+
+test "format_list handles empty" {
+    assert_eq(format_list([]), "")
+}
+
+test "clamp constrains values" {
+    assert_eq(clamp(5, 0, 10), 5)
+    assert_eq(clamp(-3, 0, 10), 0)
+    assert_eq(clamp(99, 0, 10), 10)
+}
+
+// ─── Model Tests ────────────────────────────────────────────────
+
+test "User.new validates name" {
+    let result = User.new("", 50, "dev")
+    assert(result.is_err())
+}
+
+test "User.new validates score range" {
+    assert(User.new("A", -1, "dev").is_err())
+    assert(User.new("A", 101, "dev").is_err())
+    assert(User.new("A", 50, "dev").is_ok())
+}
+
+test "User.passes checks threshold" {
+    let user = User { name: "Test", score: 85, role: "dev" }
+    assert(user.passes(80))
+    assert(!user.passes(90))
+}
+
+test "User.display formats correctly" {
+    let user = User { name: "Alice", score: 92, role: "engineer" }
+    assert_eq(user.display(), "Alice (engineer) — 92")
+}
+
+test "Status.is_active works" {
+    assert(Status::Active.is_active())
+    assert(!Status::Draft.is_active())
+    assert(!Status::Complete.is_active())
+}
+
+test "Status.label returns emoji label" {
+    assert_eq(Status::Active.label(), "🟢 Active")
+    assert_eq(Status::Complete.label(), "✅ Complete")
+}
+
+// ─── Pipeline Tests ─────────────────────────────────────────────
+
+test "pipeline transforms data correctly" {
+    let numbers = [1, 2, 3, 4, 5]
+    let result = numbers
+        |> filter(n => n > 2)
+        |> map(n => n * 10)
+
+    assert_eq(result, [30, 40, 50])
+}
+
+test "pipeline handles empty input" {
+    let result = []
+        |> filter(n => n > 0)
+        |> map(n => n * 2)
+
+    assert_eq(result, [])
+}

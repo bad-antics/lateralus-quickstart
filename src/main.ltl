@@ -1,0 +1,52 @@
+// main.ltl — Your Lateralus entry point
+// Run with: lateralus run src/main.ltl
+
+import { greet, format_list } from "./utils"
+import { User } from "./models"
+
+// ─── Pipeline Example ───────────────────────────────────────────
+
+fn main() {
+    let users = [
+        User { name: "Alice",   score: 92, role: "engineer" },
+        User { name: "Bob",     score: 78, role: "designer" },
+        User { name: "Charlie", score: 95, role: "engineer" },
+        User { name: "Diana",   score: 88, role: "manager" },
+        User { name: "Eve",     score: 61, role: "engineer" },
+    ]
+
+    // Pipeline: filter → transform → sort → display
+    let top_engineers = users
+        |> filter(u => u.role == "engineer")
+        |> filter(u => u.score >= 75)
+        |> map(u => { name: u.name, grade: letter_grade(u.score) })
+        |> sort_by(.grade)
+
+    print(greet("Lateralus"))
+    print("─".repeat(40))
+    print("Top Engineers:")
+    top_engineers |> each(e => {
+        print("  ${e.name}: ${e.grade}")
+    })
+
+    // Pattern matching on results
+    match top_engineers.len() {
+        0     => print("\nNo qualifying engineers found."),
+        1     => print("\nFound 1 top engineer!"),
+        count => print("\nFound ${count} top engineers!")
+    }
+}
+
+// ─── Helper ─────────────────────────────────────────────────────
+
+fn letter_grade(score: int) -> string {
+    match score {
+        90..=100 => "A",
+        80..=89  => "B",
+        70..=79  => "C",
+        60..=69  => "D",
+        _        => "F"
+    }
+}
+
+main()

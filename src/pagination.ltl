@@ -1,0 +1,73 @@
+// pagination.ltl — Cursor and offset pagination helpers
+struct Page<T> {
+    items:       [T],
+    total:       int,
+    page:        int,
+    per_page:    int,
+    total_pages: int,
+    has_next:    bool,
+    has_prev:    bool,
+}
+
+impl<T> Page<T> {
+    fn new(items: [T], total: int, page: int, per_page: int) -> Page<T> {
+        let total_pages = (total + per_page - 1) / per_page
+        Page {
+            items,
+            total,
+            page,
+            per_page,
+            total_pages,
+            has_next: page < total_pages,
+            has_prev: page > 1,
+        }
+    }
+
+    fn offset(self) -> int { (self.page - 1) * self.per_page }
+
+    fn to_meta(self) -> dict<string, json.Value> {
+        {
+            "total":       self.total,
+            "page":        self.page,
+            "per_page":    self.per_page,
+            "total_pages": self.total_pages,
+            "has_next":    self.has_next,
+            "has_prev":    self.has_prev,
+        }
+    }
+}
+
+fn paginate<T>(items: [T], page: int, per_page: int) -> Page<T> {
+    let total  = items.len()
+    let offset = ((page - 1) * per_page).max(0)
+    let slice  = items[offset..offset + per_page] ?? []
+    Page.new(slice, total, page, per_page)
+}
+
+struct CursorPage<T, C: Clone> {
+    items:       [T],
+    next_cursor: C?,
+    prev_cursor: C?,
+    has_more:    bool,
+}
+
+fn cursor_paginate<T, C: Clone + Ord>(
+    items:      [T],
+    get_cursor: fn(T) -> C,
+    after:      C?,
+    limit:      int,
+) -> CursorPage<T, C> {
+    let filtered = match after {
+        none    => items,
+        some(c) => items |> skip_while(x => get_cursor(x) <= c) |> collect(),
+    }
+    let page     = filtered |> take(limit + 1) |> collect()
+    let has_more = page.len() > limit
+    let items    = page |> take(limit) |> collect()
+    CursorPage {
+        next_cursor: if has_more { items.last().map(get_cursor) } else { none },
+        prev_cursor: after,
+        has_more,
+        items,
+    }
+}

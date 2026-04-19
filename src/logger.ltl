@@ -1,0 +1,52 @@
+// logger.ltl — Structured logger with levels
+use std.time.DateTime
+use std.io
+
+enum Level { Debug, Info, Warn, Error }
+
+impl Level {
+    fn from_string(s: string) -> Level {
+        match s.to_lowercase().as_str() {
+            "debug" => Level.Debug,
+            "warn"  => Level.Warn,
+            "error" => Level.Error,
+            _       => Level.Info,
+        }
+    }
+
+    fn label(self) -> string {
+        match self {
+            Level.Debug => "\e[36mDEBUG\e[0m",
+            Level.Info  => "\e[32mINFO \e[0m",
+            Level.Warn  => "\e[33mWARN \e[0m",
+            Level.Error => "\e[31mERROR\e[0m",
+        }
+    }
+
+    fn value(self) -> int {
+        match self { Level.Debug => 0, Level.Info => 1, Level.Warn => 2, Level.Error => 3 }
+    }
+}
+
+struct Logger {
+    min_level: Level,
+    prefix:    string,
+}
+
+impl Logger {
+    fn new(min_level: Level, prefix: string) -> Logger {
+        Logger { min_level, prefix }
+    }
+
+    fn log(self, level: Level, msg: string) {
+        if level.value() >= self.min_level.value() {
+            let ts = DateTime.now().format("%H:%M:%S")
+            eprintln("[${ts}] ${level.label()} ${self.prefix} ${msg}")
+        }
+    }
+
+    fn debug(self, msg: string) { self.log(Level.Debug, msg) }
+    fn info(self,  msg: string) { self.log(Level.Info,  msg) }
+    fn warn(self,  msg: string) { self.log(Level.Warn,  msg) }
+    fn error(self, msg: string) { self.log(Level.Error, msg) }
+}

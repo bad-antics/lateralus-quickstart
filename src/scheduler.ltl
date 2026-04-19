@@ -1,0 +1,66 @@
+// scheduler.ltl — Lightweight cron-style task scheduler
+use std.time.{DateTime, Duration, Instant}
+use std.async.{spawn, sleep}
+
+struct Job {
+    name:       string,
+    interval:   Duration,
+    run:        async fn() -> Result<(), string>,
+    last_run:   DateTime?,
+    run_count:  int,
+    error_count: int,
+}
+
+struct Scheduler {
+    jobs: [Job],
+}
+
+impl Scheduler {
+    fn new() -> Scheduler { Scheduler { jobs: [] } }
+
+    fn every(mut self, name: string, interval: Duration, f: async fn() -> Result<(), string>) -> Scheduler {
+        self.jobs.push(Job {
+            name,
+            interval,
+            run:         f,
+            last_run:    none,
+            run_count:   0,
+            error_count: 0,
+        })
+        self
+    }
+
+    fn every_seconds(self, name: string, n: int, f: async fn() -> Result<(), string>) -> Scheduler {
+        self.every(name, Duration.seconds(n), f)
+    }
+
+    fn every_minutes(self, name: string, n: int, f: async fn() -> Result<(), string>) -> Scheduler {
+        self.every(name, Duration.minutes(n), f)
+    }
+
+    async fn run(mut self) {
+        print("Scheduler started with ${self.jobs.len()} jobs")
+        loop {
+            let now = DateTime.now()
+            for job in self.jobs.iter_mut() {
+                let due = match job.last_run {
+                    none    => true,
+                    some(t) => now.diff(t).as_duration() >= job.interval,
+                }
+                if due {
+                    let job_name = job.name.clone()
+                    let f = job.run.clone()
+                    spawn(async || {
+                        match await f() {
+                            ok(())  => print("[scheduler] ${job_name} OK"),
+                            err(e)  => eprintln("[scheduler] ${job_name} FAILED: ${e}"),
+                        }
+                    })
+                    job.last_run    = some(now)
+                    job.run_count  += 1
+                }
+            }
+            await sleep(Duration.seconds(1))
+        }
+    }
+}

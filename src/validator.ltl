@@ -1,0 +1,58 @@
+// validator.ltl — Composable field validators
+enum ValidationError {
+    Required(string),
+    TooShort(string, int),
+    TooLong(string, int),
+    InvalidFormat(string, string),
+    OutOfRange(string, float, float),
+    Custom(string),
+}
+
+impl ValidationError {
+    fn message(self) -> string {
+        match self {
+            ValidationError.Required(field)           => "${field} is required",
+            ValidationError.TooShort(field, min)      => "${field} must be at least ${min} chars",
+            ValidationError.TooLong(field, max)       => "${field} must be at most ${max} chars",
+            ValidationError.InvalidFormat(field, fmt) => "${field} must match ${fmt}",
+            ValidationError.OutOfRange(field, lo, hi) => "${field} must be between ${lo} and ${hi}",
+            ValidationError.Custom(msg)               => msg,
+        }
+    }
+}
+
+type Validator<T> = fn(T) -> [ValidationError]
+
+fn required(field: string) -> Validator<string> {
+    |v| if v.trim().is_empty() { [ValidationError.Required(field)] } else { [] }
+}
+
+fn min_length(field: string, min: int) -> Validator<string> {
+    |v| if v.len() < min { [ValidationError.TooShort(field, min)] } else { [] }
+}
+
+fn max_length(field: string, max: int) -> Validator<string> {
+    |v| if v.len() > max { [ValidationError.TooLong(field, max)] } else { [] }
+}
+
+fn matches(field: string, pattern: string) -> Validator<string> {
+    let re = Regex.new(pattern)
+    |v| if !re.is_match(v) { [ValidationError.InvalidFormat(field, pattern)] } else { [] }
+}
+
+fn email(field: string) -> Validator<string> {
+    matches(field, r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+}
+
+fn range(field: string, lo: float, hi: float) -> Validator<float> {
+    |v| if v < lo || v > hi { [ValidationError.OutOfRange(field, lo, hi)] } else { [] }
+}
+
+fn validate_all<T: Clone>(value: T, validators: [Validator<T>]) -> Result<T, [ValidationError]> {
+    let errors = validators |> flat_map(v => v(value.clone())) |> collect()
+    if errors.is_empty() { ok(value) } else { err(errors) }
+}
+
+fn combine<T: Clone>(validators: [Validator<T>]) -> Validator<T> {
+    |v| validators |> flat_map(vl => vl(v.clone())) |> collect()
+}

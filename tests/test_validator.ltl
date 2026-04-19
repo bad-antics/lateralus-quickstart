@@ -1,0 +1,42 @@
+// tests/test_validator.ltl — Validator unit tests
+use crate.src.validator.{required, min_length, max_length, email, validate_all, combine, ValidationError}
+
+test "required rejects empty strings" {
+    let v = required("name")
+    assert!(!v("").is_empty())
+    assert!(!v("  ").is_empty())
+    assert!(v("Alice").is_empty())
+}
+
+test "min_length validates correctly" {
+    let v = min_length("password", 8)
+    assert!(!v("short").is_empty())
+    assert!(v("longenough").is_empty())
+}
+
+test "max_length validates correctly" {
+    let v = max_length("username", 20)
+    assert!(!v("a".repeat(21)).is_empty())
+    assert!(v("alice").is_empty())
+}
+
+test "email rejects invalid addresses" {
+    let v = email("email")
+    assert!(!v("notanemail").is_empty())
+    assert!(!v("@nodomain").is_empty())
+    assert!(v("user@example.com").is_empty())
+}
+
+test "validate_all combines errors" {
+    let validators = [required("name"), min_length("name", 3), max_length("name", 50)]
+    assert!(validate_all("", validators).is_err())
+    assert!(validate_all("Al", validators).is_err())
+    assert!(validate_all("Alice", validators).is_ok())
+}
+
+test "combine chains validators" {
+    let v = combine([required("x"), min_length("x", 2)])
+    assert_eq(v("").len(), 2)
+    assert_eq(v("a").len(), 1)
+    assert_eq(v("ab").len(), 0)
+}

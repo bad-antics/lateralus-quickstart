@@ -1,0 +1,5 @@
+// examples/hello.ltl — Minimal hello world
+fn main() {
+    print("Hello from lateralus-quickstart!")
+}
+main()

@@ -1,0 +1,41 @@
+// tests/test_cache.ltl — Cache unit tests
+use crate.src.cache.Cache
+use std.time.Duration
+use std.thread.sleep
+
+test "Cache stores and retrieves values" {
+    let c: Cache<int> = Cache.new(Duration.seconds(60))
+    c.set("x", 42)
+    assert_eq(c.get("x"), some(42))
+}
+
+test "Cache returns none for missing keys" {
+    let c: Cache<string> = Cache.new(Duration.seconds(60))
+    assert_eq(c.get("missing"), none)
+}
+
+test "Cache expires entries after TTL" {
+    let c: Cache<string> = Cache.new(Duration.ms(50))
+    c.set("key", "value")
+    assert_eq(c.get("key"), some("value"))
+    sleep(Duration.ms(100))
+    assert_eq(c.get("key"), none)
+}
+
+test "get_or_set computes and caches" {
+    let c: Cache<int> = Cache.new(Duration.seconds(60))
+    mut calls = 0
+    let v = c.get_or_set("x", || { calls += 1; 99 })
+    assert_eq(v, 99)
+    assert_eq(calls, 1)
+    let v2 = c.get_or_set("x", || { calls += 1; 0 })
+    assert_eq(v2, 99)
+    assert_eq(calls, 1)  // not called again
+}
+
+test "invalidate removes entry" {
+    let c: Cache<int> = Cache.new(Duration.seconds(60))
+    c.set("k", 1)
+    c.invalidate("k")
+    assert_eq(c.get("k"), none)
+}

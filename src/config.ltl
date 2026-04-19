@@ -1,0 +1,43 @@
+// config.ltl — App configuration with env + defaults
+use std.env
+use std.json
+use std.io
+
+struct Config {
+    host:        string,
+    port:        int,
+    debug:       bool,
+    log_level:   string,
+    db_url:      string,
+    secret_key:  string,
+}
+
+impl Config {
+    fn from_env() -> Config {
+        Config {
+            host:       env.get("HOST")      ?? "0.0.0.0",
+            port:       env.get("PORT")?.parse_int() ?? 8080,
+            debug:      env.get("DEBUG")     == some("true"),
+            log_level:  env.get("LOG_LEVEL") ?? "info",
+            db_url:     env.get("DATABASE_URL") ?? "sqlite:./dev.db",
+            secret_key: env.get("SECRET_KEY") ?? "change-me-in-production",
+        }
+    }
+
+    fn from_file(path: string) -> Result<Config, string> {
+        let raw  = io.read_file(path).map_err(|e| "Cannot read ${path}: ${e}")?
+        let data = json.parse(raw).map_err(|e| "Invalid JSON: ${e}")?
+        ok(Config {
+            host:       data["host"].as_string()    ?? "0.0.0.0",
+            port:       data["port"].as_int()       ?? 8080,
+            debug:      data["debug"].as_bool()     ?? false,
+            log_level:  data["log_level"].as_string() ?? "info",
+            db_url:     data["db_url"].as_string()  ?? "sqlite:./dev.db",
+            secret_key: data["secret_key"].as_string() ?? "change-me",
+        })
+    }
+
+    fn is_production(self) -> bool {
+        !self.debug && self.log_level == "warn" || self.log_level == "error"
+    }
+}

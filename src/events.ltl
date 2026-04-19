@@ -1,0 +1,45 @@
+// events.ltl — Typed event emitter
+use std.sync.{Arc, Mutex}
+
+struct EventEmitter<E: Clone> {
+    handlers: Arc<Mutex<dict<string, [fn(E)]>>>,
+}
+
+impl<E: Clone> EventEmitter<E> {
+    fn new() -> EventEmitter<E> {
+        EventEmitter { handlers: Arc.new(Mutex.new({})) }
+    }
+
+    fn on(self, event: string, handler: fn(E)) {
+        self.handlers.lock()
+            .entry(event)
+            .or_insert([])
+            .push(handler)
+    }
+
+    fn off(self, event: string) {
+        self.handlers.lock().remove(event)
+    }
+
+    fn once(self, event: string, handler: fn(E)) {
+        let emitter = self.clone()
+        let wrapped: fn(E) = |e| {
+            handler(e)
+            emitter.off(event)
+        }
+        self.on(event, wrapped)
+    }
+
+    fn emit(self, event: string, payload: E) {
+        let handlers = self.handlers.lock()
+            .get(event)
+            .cloned()
+            .unwrap_or([])
+        for h in handlers { h(payload.clone()) }
+    }
+
+    fn emit_all(self, payload: E) {
+        let keys: [string] = self.handlers.lock().keys() |> collect()
+        for k in keys { self.emit(k, payload.clone()) }
+    }
+}

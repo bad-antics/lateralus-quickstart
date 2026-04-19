@@ -1,0 +1,56 @@
+// router.ltl — Minimal HTTP router
+use std.net.{Request, Response}
+
+type Handler = fn(Request) -> Response
+
+struct Route {
+    method:  string,
+    pattern: string,
+    handler: Handler,
+}
+
+struct Router {
+    routes: [Route],
+}
+
+impl Router {
+    fn new() -> Router { Router { routes: [] } }
+
+    fn get(mut self,    p: string, h: Handler) -> Router { self.add("GET",    p, h) }
+    fn post(mut self,   p: string, h: Handler) -> Router { self.add("POST",   p, h) }
+    fn put(mut self,    p: string, h: Handler) -> Router { self.add("PUT",    p, h) }
+    fn delete(mut self, p: string, h: Handler) -> Router { self.add("DELETE", p, h) }
+
+    fn add(mut self, method: string, pattern: string, handler: Handler) -> Router {
+        self.routes.push(Route { method, pattern, handler })
+        self
+    }
+
+    fn dispatch(self, req: Request) -> Response {
+        for route in self.routes {
+            if route.method == req.method {
+                if let some(params) = self.match_pattern(route.pattern, req.path) {
+                    let mut r = req.clone()
+                    r.params = params
+                    return (route.handler)(r)
+                }
+            }
+        }
+        Response.json({"error": "Not found"}).status(404)
+    }
+
+    fn match_pattern(self, pattern: string, path: string) -> dict<string, string>? {
+        let pat_parts  = pattern.split("/")
+        let path_parts = path.split("/")
+        if pat_parts.len() != path_parts.len() { return none }
+        mut params: dict<string, string> = {}
+        for (pp, ap) in pat_parts.zip(path_parts) {
+            if pp.starts_with(":") {
+                params[pp[1..]] = ap
+            } else if pp != ap {
+                return none
+            }
+        }
+        some(params)
+    }
+}

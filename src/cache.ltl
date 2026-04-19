@@ -1,0 +1,60 @@
+// cache.ltl — In-memory TTL cache
+use std.time.{Instant, Duration}
+use std.sync.{Arc, Mutex}
+
+struct Entry<V> {
+    value:      V,
+    expires_at: Instant,
+}
+
+struct Cache<V: Clone> {
+    inner: Arc<Mutex<dict<string, Entry<V>>>>,
+    ttl:   Duration,
+}
+
+impl<V: Clone> Cache<V> {
+    fn new(ttl: Duration) -> Cache<V> {
+        Cache { inner: Arc.new(Mutex.new({})), ttl }
+    }
+
+    fn set(self, key: string, value: V) {
+        let entry = Entry { value, expires_at: Instant.now() + self.ttl }
+        self.inner.lock()[key] = entry
+    }
+
+    fn get(self, key: string) -> V? {
+        let map = self.inner.lock()
+        match map.get(key) {
+            none    => none,
+            some(e) => {
+                if Instant.now() > e.expires_at { none }
+                else { some(e.value.clone()) }
+            },
+        }
+    }
+
+    fn get_or_set(self, key: string, compute: fn() -> V) -> V {
+        match self.get(key) {
+            some(v) => v,
+            none    => {
+                let v = compute()
+                self.set(key, v.clone())
+                v
+            },
+        }
+    }
+
+    fn invalidate(self, key: string) {
+        self.inner.lock().remove(key)
+    }
+
+    fn clear(self) {
+        self.inner.lock().clear()
+    }
+
+    fn evict_expired(self) {
+        let now = Instant.now()
+        let mut map = self.inner.lock()
+        map.retain(|_, e| e.expires_at > now)
+    }
+}

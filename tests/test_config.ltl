@@ -1,0 +1,28 @@
+// tests/test_config.ltl — Config unit tests
+use crate.src.config.Config
+use std.env
+
+test "Config.from_env uses defaults when env is empty" {
+    env.clear()
+    let cfg = Config.from_env()
+    assert_eq(cfg.host,      "0.0.0.0")
+    assert_eq(cfg.port,      8080)
+    assert_eq(cfg.debug,     false)
+    assert_eq(cfg.log_level, "info")
+}
+
+test "Config.from_env reads environment variables" {
+    env.set("HOST",  "127.0.0.1")
+    env.set("PORT",  "3000")
+    env.set("DEBUG", "true")
+    let cfg = Config.from_env()
+    assert_eq(cfg.host,  "127.0.0.1")
+    assert_eq(cfg.port,  3000)
+    assert_eq(cfg.debug, true)
+    env.clear()
+}
+
+test "Config.from_file returns error for missing file" {
+    let result = Config.from_file("/nonexistent/config.json")
+    assert!(result.is_err())
+}

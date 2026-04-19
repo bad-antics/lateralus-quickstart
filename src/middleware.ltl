@@ -1,0 +1,70 @@
+// middleware.ltl — Request middleware pipeline
+use std.net.{Request, Response}
+use std.time.Instant
+
+type Next     = fn(Request) -> Response
+type Middleware = fn(Request, Next) -> Response
+
+fn chain(middlewares: [Middleware], final_handler: Next) -> Next {
+    middlewares |> fold_right(final_handler, |mw, next| {
+        |req| mw(req, next)
+    })
+}
+
+/// Log every request with method, path, status, and duration
+fn logging_middleware(req: Request, next: Next) -> Response {
+    let start = Instant.now()
+    let resp  = next(req.clone())
+    let ms    = start.elapsed_ms()
+    eprintln("${req.method} ${req.path} ${resp.status} ${ms}ms")
+    resp
+}
+
+/// Attach CORS headers to every response
+fn cors_middleware(allowed_origins: [string]) -> Middleware {
+    |req, next| {
+        let mut resp = next(req.clone())
+        let origin   = req.headers.get("Origin") ?? "*"
+        if allowed_origins.contains(origin) || allowed_origins.contains("*") {
+            resp.headers["Access-Control-Allow-Origin"]  = origin
+            resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+        }
+        if req.method == "OPTIONS" {
+            return Response.empty().status(204)
+        }
+        resp
+    }
+}
+
+/// Reject requests missing a valid Bearer token
+fn auth_middleware(valid_tokens: [string]) -> Middleware {
+    |req, next| {
+        let auth = req.headers.get("Authorization") ?? ""
+        if !auth.starts_with("Bearer ") {
+            return Response.json({"error": "Unauthorized"}).status(401)
+        }
+        let token = auth.strip_prefix("Bearer ").unwrap()
+        if !valid_tokens.contains(token) {
+            return Response.json({"error": "Forbidden"}).status(403)
+        }
+        next(req)
+    }
+}
+
+/// Simple in-memory rate limiter (requests per minute per IP)
+fn rate_limit_middleware(max_rpm: int) -> Middleware {
+    mut counts: dict<string, (int, int)> = {}  // ip -> (count, window_start_unix)
+    |req, next| {
+        let ip   = req.remote_addr.split(":")[0]
+        let now  = std.time.unix_now()
+        let (count, window) = counts.get(ip) ?? (0, now)
+        let new_window = if now - window >= 60 { now } else { window }
+        let new_count  = if now - window >= 60 { 1   } else { count + 1 }
+        counts[ip] = (new_count, new_window)
+        if new_count > max_rpm {
+            return Response.json({"error": "Rate limit exceeded"}).status(429)
+        }
+        next(req)
+    }
+}

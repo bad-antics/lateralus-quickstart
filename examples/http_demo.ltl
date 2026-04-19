@@ -1,0 +1,30 @@
+// examples/http_demo.ltl — Demo: start the server and hit /ping
+use crate.src.router.Router
+use crate.src.middleware.{chain, logging_middleware, cors_middleware}
+use crate.src.config.Config
+use std.net.{HttpServer, Request, Response}
+
+fn build_app(cfg: Config) -> HttpServer {
+    let router = Router.new()
+        .get("/",        |_|   Response.json({"status": "ok"}))
+        .get("/ping",    |_|   Response.json({"pong": true}))
+        .get("/config",  |_|   Response.json({"host": cfg.host, "port": cfg.port, "debug": cfg.debug}))
+        .post("/echo",   |req| Response.json(req.json()))
+
+    let middleware_stack = chain(
+        [logging_middleware, cors_middleware(["*"])],
+        |req| router.dispatch(req),
+    )
+
+    HttpServer.bind("${cfg.host}:${cfg.port}")
+        .handler(middleware_stack)
+}
+
+fn main() {
+    let cfg = Config.from_env()
+    print("Starting server on ${cfg.host}:${cfg.port}")
+    let server = build_app(cfg)
+    server.run()
+}
+
+main()

@@ -1,0 +1,28 @@
+// examples/db_demo.ltl — Demo: SQLite CRUD
+use crate.src.db.DB
+use crate.src.config.Config
+
+fn main() {
+    let cfg = Config.from_env()
+    let db  = DB.connect(cfg.db_url).expect("Failed to connect")
+
+    db.migrate().expect("Migration failed")
+
+    let id1 = db.insert("foo", "bar").expect("Insert failed")
+    let id2 = db.insert("baz", "qux").expect("Insert failed")
+    print("Inserted: ${id1}, ${id2}")
+
+    let row = db.find_by_id(id1).expect("Query failed")
+    print("Found: ${row}")
+
+    let all = db.find_all().expect("Query failed")
+    print("All rows: ${all.len()}")
+
+    db.delete(id1).expect("Delete failed")
+    print("Deleted ${id1}")
+
+    let remaining = db.find_all().expect("Query failed")
+    print("Remaining: ${remaining.len()}")
+}
+
+main()

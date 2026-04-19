@@ -1,101 +1,86 @@
-# 🚀 Lateralus Quickstart
+# lateralus-quickstart
 
-> Hit **"Use this template"** above to create your own Lateralus project in seconds.
+> The official starter template for Lateralus applications.
 
-[![Lateralus](https://img.shields.io/badge/language-Lateralus-7c5cfc?style=flat-square)](https://github.com/bad-antics/lateralus-lang)
-[![VS Code](https://img.shields.io/badge/editor-VS%20Code-007ACC?style=flat-square&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=lateralus.lateralus-lang)
-[![PyPI](https://img.shields.io/badge/pip-lateralus--lang-34d399?style=flat-square&logo=pypi)](https://pypi.org/project/lateralus-lang/)
+Fork this repo to bootstrap a new project — batteries included.
 
----
-
-## What's Inside
+## Project Layout
 
 ```
-your-project/
+lateralus-quickstart/
 ├── src/
-│   ├── main.ltl          # Entry point
-│   ├── utils.ltl         # Helper functions
-│   └── models.ltl        # Data models
+│   ├── main.ltl          # entry point
+│   ├── models.ltl         # data models
+│   ├── utils.ltl          # shared helpers
+│   ├── config.ltl         # Config struct + from_env / from_file
+│   ├── logger.ltl         # structured logger (Level enum, ANSI colours)
+│   ├── router.ltl         # HTTP router with :param pattern matching
+│   ├── middleware.ltl     # logging / CORS / auth / rate-limit middleware
+│   ├── db.ltl             # database abstraction (connect, migrate, CRUD)
+│   ├── cache.ltl          # in-memory TTL cache with Arc<Mutex<>>
+│   ├── events.ltl         # typed EventEmitter (on/off/once/emit)
+│   ├── validator.ltl      # composable validators (email, range, combine)
+│   ├── pagination.ltl     # offset + cursor pagination helpers
+│   └── scheduler.ltl      # cron-style async task scheduler
 ├── tests/
-│   └── test_main.ltl     # Example tests
-├── lateralus.toml        # Project config
-├── .github/workflows/
-│   └── ci.yml            # CI pipeline (ready to go)
-└── README.md             # You are here
+│   ├── test_main.ltl      # main module tests
+│   ├── test_config.ltl    # 3 config tests
+│   ├── test_validator.ltl # 6 validator tests
+│   ├── test_cache.ltl     # 5 cache tests
+│   └── test_pagination.ltl# 4 pagination tests
+└── examples/
+    ├── hello.ltl          # minimal hello world
+    ├── http_demo.ltl      # router + middleware chain demo
+    └── db_demo.ltl        # SQLite CRUD demo
 ```
 
 ## Quick Start
 
-### 1. Install Lateralus
-
 ```bash
-pip install lateralus-lang
+# 1. Fork / clone
+git clone https://github.com/YOUR_USERNAME/lateralus-quickstart my-app
+cd my-app
+
+# 2. Run
+ltl run src/main.ltl
+
+# 3. Test
+ltl test tests/
+
+# 4. Try an example
+ltl run examples/http_demo.ltl
 ```
 
-### 2. Run the project
-
-```bash
-lateralus run src/main.ltl
-```
-
-### 3. Run tests
-
-```bash
-lateralus test
-```
-
-You should see:
-
-```
-✓ greet returns formatted string
-✓ pipeline transforms data correctly
-✓ User model validates fields
-
-3 passed, 0 failed
-```
-
-## VS Code Support
-
-Install the [Lateralus extension](https://marketplace.visualstudio.com/items?itemName=lateralus.lateralus-lang) for:
-
-- 🎨 Syntax highlighting
-- 📝 Snippets (`ltlfn`, `ltlpipe`, `ltlstruct`, etc.)
-- 🔍 Bracket matching & auto-indent
-
-```bash
-code --install-extension lateralus.lateralus-lang
-```
-
-## What is Lateralus?
-
-Lateralus is a modern programming language built around **pipelines**, **pattern matching**, and **expressive syntax**.
+## Key Patterns
 
 ```lateralus
-// Pipeline-driven data transformation
-let result = data
-    |> filter(x => x.score > 80)
-    |> map(x => { ...x, grade: calculate_grade(x.score) })
-    |> sort_by(.grade)
-    |> take(10)
+// Config from environment
+let cfg = Config.from_env()
 
-// Pattern matching
-match response {
-    { status: 200, body } => process(body),
-    { status: 404 }       => log("not found"),
-    { status }             => error("unexpected: ${status}")
-}
+// Logger
+let log = Logger.new(Level.Info)
+log.info("server started on :${cfg.port}")
+
+// Router
+let router = Router.new()
+    |> route("GET", "/users/:id", get_user)
+    |> route("POST", "/users",    create_user)
+
+// Middleware pipeline
+let app = router |> with(logging_mw) |> with(cors_mw) |> with(auth_mw)
+
+// Async scheduler
+let sched = Scheduler.new()
+sched.every_minutes(5, || flush_cache())
+sched.run().await
 ```
 
-## Learn More
+## Language
 
-| Resource | Link |
-|---|---|
-| 📖 Learn Lateralus | [Tutorial](https://github.com/bad-antics/learn-lateralus) |
-| 📚 Language Repo | [lateralus-lang](https://github.com/bad-antics/lateralus-lang) |
-| 🎮 Playground | [Try Online](https://bad-antics.github.io/lateralus/playground.html) |
-| 💡 Examples | [lateralus-examples](https://github.com/bad-antics/lateralus-examples) |
-| 🌐 Website | [bad-antics.github.io/lateralus](https://bad-antics.github.io/lateralus/) |
+This project uses [Lateralus](https://github.com/bad-antics/lateralus-lang) — a systems-level
+language with first-class pipelines (`|>`), async/await, algebraic types, and a Rust-inspired
+ownership model.
 
-## License
-
-MIT — use this template for anything.
+- Compiler: [lateralus-compiler](https://github.com/bad-antics/lateralus-compiler)
+- Learn: [learn-lateralus](https://github.com/bad-antics/learn-lateralus)
+- Examples: [lateralus-examples](https://github.com/bad-antics/lateralus-examples)

@@ -1,0 +1,35 @@
+// tests/test_pagination.ltl — Pagination tests
+use crate.src.pagination.{paginate, cursor_paginate}
+
+test "paginate first page" {
+    let items = range(1, 101) |> collect()
+    let p = paginate(items, 1, 10)
+    assert_eq(p.items,       range(1, 11)  |> collect())
+    assert_eq(p.total,       100)
+    assert_eq(p.total_pages, 10)
+    assert_eq(p.has_next,    true)
+    assert_eq(p.has_prev,    false)
+}
+
+test "paginate last page" {
+    let items = range(1, 101) |> collect()
+    let p = paginate(items, 10, 10)
+    assert_eq(p.items,    range(91, 101) |> collect())
+    assert_eq(p.has_next, false)
+    assert_eq(p.has_prev, true)
+}
+
+test "paginate partial last page" {
+    let items = range(1, 25) |> collect()
+    let p = paginate(items, 3, 10)
+    assert_eq(p.items.len(), 4)
+    assert_eq(p.has_next, false)
+}
+
+test "cursor_paginate first batch" {
+    let items = range(1, 21) |> collect()
+    let page = cursor_paginate(items, |x| x, none, 5)
+    assert_eq(page.items,    [1,2,3,4,5])
+    assert_eq(page.has_more, true)
+    assert_eq(page.next_cursor, some(5))
+}

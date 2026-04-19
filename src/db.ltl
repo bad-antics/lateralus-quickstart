@@ -1,0 +1,53 @@
+// db.ltl — Database abstraction layer
+use std.db.{Connection, Row, QueryResult}
+
+struct DB {
+    conn: Connection,
+}
+
+impl DB {
+    fn connect(url: string) -> Result<DB, string> {
+        let conn = Connection.open(url).map_err(|e| "DB connect failed: ${e}")?
+        ok(DB { conn })
+    }
+
+    fn migrate(self) -> Result<(), string> {
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS items (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT NOT NULL,
+                value      TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """).map_err(|e| "Migration failed: ${e}")
+    }
+
+    fn insert(self, name: string, value: string) -> Result<int, string> {
+        let result = self.conn.execute(
+            "INSERT INTO items (name, value) VALUES (?, ?)",
+            [name, value]
+        ).map_err(|e| "Insert failed: ${e}")?
+        ok(result.last_insert_id())
+    }
+
+    fn find_by_id(self, id: int) -> Result<Row?, string> {
+        let rows = self.conn.query(
+            "SELECT * FROM items WHERE id = ?",
+            [id.to_string()]
+        ).map_err(|e| "Query failed: ${e}")?
+        ok(rows.first())
+    }
+
+    fn find_all(self) -> Result<[Row], string> {
+        self.conn.query("SELECT * FROM items ORDER BY created_at DESC", [])
+            .map_err(|e| "Query failed: ${e}")
+    }
+
+    fn delete(self, id: int) -> Result<bool, string> {
+        let result = self.conn.execute(
+            "DELETE FROM items WHERE id = ?",
+            [id.to_string()]
+        ).map_err(|e| "Delete failed: ${e}")?
+        ok(result.rows_affected() > 0)
+    }
+}
